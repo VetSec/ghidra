@@ -29,6 +29,7 @@ import javax.swing.event.ChangeListener;
 
 import docking.*;
 import docking.action.*;
+import docking.actions.PopupActionProvider;
 import docking.dnd.*;
 import docking.widgets.EventTrigger;
 import docking.widgets.fieldpanel.FieldPanel;
@@ -47,7 +48,8 @@ import ghidra.app.util.viewer.listingpanel.*;
 import ghidra.app.util.viewer.multilisting.MultiListingLayoutModel;
 import ghidra.app.util.viewer.util.FieldNavigator;
 import ghidra.framework.options.SaveState;
-import ghidra.framework.plugintool.*;
+import ghidra.framework.plugintool.NavigatableComponentProviderAdapter;
+import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.*;
 import ghidra.program.model.listing.*;
 import ghidra.program.util.*;
@@ -57,7 +59,7 @@ import resources.ResourceManager;
 
 public class CodeViewerProvider extends NavigatableComponentProviderAdapter
 		implements ProgramLocationListener, ProgramSelectionListener, Draggable, Droppable,
-		ChangeListener, StringSelectionListener, PopupListener {
+		ChangeListener, StringSelectionListener, PopupActionProvider {
 
 	private static final String OLD_NAME = "CodeBrowserPlugin";
 	private static final String NAME = "Listing";
@@ -156,7 +158,7 @@ public class CodeViewerProvider extends NavigatableComponentProviderAdapter
 		listingPanel.addIndexMapChangeListener(this);
 
 		codeViewerClipboardProvider = new CodeBrowserClipboardProvider(tool, this);
-		tool.addPopupListener(this);
+		tool.addPopupActionProvider(this);
 	}
 
 	@Override
@@ -226,6 +228,8 @@ public class CodeViewerProvider extends NavigatableComponentProviderAdapter
 	public void dispose() {
 		super.dispose();
 
+		tool.removePopupActionProvider(this);
+
 		if (clipboardService != null) {
 			clipboardService.deRegisterClipboardContentProvider(codeViewerClipboardProvider);
 		}
@@ -265,17 +269,17 @@ public class CodeViewerProvider extends NavigatableComponentProviderAdapter
 		FieldHeader headerPanel = listingPanel.getFieldHeader();
 		if (headerPanel != null && source instanceof FieldHeaderComp) {
 			FieldHeaderLocation fhLoc = headerPanel.getFieldHeaderLocation(event.getPoint());
-			return new ActionContext(this, fhLoc);
+			return createContext(fhLoc);
 		}
 
 		if (otherPanel != null && otherPanel.isAncestorOf((Component) source)) {
 			Object obj = getContextForMarginPanels(otherPanel, event);
 			if (obj != null) {
-				return new ActionContext(this, obj);
+				return createContext(obj);
 			}
 			return new OtherPanelContext(this, program);
 		}
-		return new ActionContext(this, getContextForMarginPanels(listingPanel, event));
+		return createContext(getContextForMarginPanels(listingPanel, event));
 	}
 
 	private Object getContextForMarginPanels(ListingPanel lp, MouseEvent event) {
@@ -951,11 +955,11 @@ public class CodeViewerProvider extends NavigatableComponentProviderAdapter
 	}
 
 	@Override
-	public List<DockingActionIf> getPopupActions(ActionContext context) {
+	public List<DockingActionIf> getPopupActions(DockingTool dt, ActionContext context) {
 		if (context.getComponentProvider() == this) {
 			return listingPanel.getHeaderActions(getName());
 		}
-		return new ArrayList<>();
+		return null;
 	}
 
 //==================================================================================================

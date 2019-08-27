@@ -72,6 +72,7 @@ public class MemoryBlockDB implements MemoryBlock {
 		}
 		length = lRecord.getLongValue(MemoryMapDBAdapter.LENGTH_COL);
 		lastSubBlock = null;
+		Collections.sort(list);
 		subBlocks = list;
 	}
 
@@ -116,7 +117,11 @@ public class MemoryBlockDB implements MemoryBlock {
 
 	@Override
 	public String getName() {
-		return record.getString(MemoryMapDBAdapter.NAME_COL);
+		String name = record.getString(MemoryMapDBAdapter.NAME_COL);
+		if (name == null) {
+			name = "";
+		}
+		return name;
 	}
 
 	@Override
@@ -449,7 +454,7 @@ public class MemoryBlockDB implements MemoryBlock {
 		SubMemoryBlock subBlock = getSubBlock(offset);
 		memMap.lock.acquire();
 		try {
-			subBlock.putByte(offset - subBlock.getStartingOffset(), b);
+			subBlock.putByte(offset, b);
 		}
 		catch (IOException e) {
 			memMap.dbError(e);

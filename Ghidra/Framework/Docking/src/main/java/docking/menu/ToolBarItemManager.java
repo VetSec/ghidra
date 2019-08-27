@@ -206,7 +206,7 @@ public class ToolBarItemManager implements PropertyChangeListener, ActionListene
 		else {
 			return;  // context is not valid, nothing to do
 		}
-		tempContext.setSource(event.getSource());
+		tempContext.setSourceObject(event.getSource());
 		final ActionContext finalContext = tempContext;
 
 		// this gives the UI some time to repaint before executing the action
@@ -229,7 +229,8 @@ public class ToolBarItemManager implements PropertyChangeListener, ActionListene
 	private ActionContext getActionContext() {
 		ComponentProvider provider = getComponentProvider();
 		ActionContext context = provider == null ? null : provider.getActionContext(null);
-		final ActionContext actionContext = context == null ? new ActionContext() : context;
+		final ActionContext actionContext =
+			context == null ? new ActionContext(provider, null) : context;
 		return actionContext;
 	}
 

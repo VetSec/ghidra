@@ -15,7 +15,7 @@
  */
 package ghidra.app.plugin.core.functiongraph;
 
-import static ghidra.graph.viewer.GraphViewerUtils.getGraphScale;
+import static ghidra.graph.viewer.GraphViewerUtils.*;
 import static org.junit.Assert.*;
 
 import java.awt.*;
@@ -45,6 +45,7 @@ import edu.uci.ics.jung.graph.Graph;
 import edu.uci.ics.jung.visualization.VisualizationModel;
 import edu.uci.ics.jung.visualization.VisualizationViewer;
 import edu.uci.ics.jung.visualization.picking.PickedState;
+import generic.test.AbstractGenericTest;
 import generic.test.TestUtils;
 import ghidra.app.cmd.label.AddLabelCmd;
 import ghidra.app.cmd.label.SetLabelPrimaryCmd;
@@ -53,7 +54,6 @@ import ghidra.app.plugin.core.clipboard.ClipboardPlugin;
 import ghidra.app.plugin.core.codebrowser.CodeBrowserPlugin;
 import ghidra.app.plugin.core.functiongraph.graph.*;
 import ghidra.app.plugin.core.functiongraph.graph.layout.FGLayoutProvider;
-import ghidra.app.plugin.core.functiongraph.graph.layout.TestFGLayoutProvider;
 import ghidra.app.plugin.core.functiongraph.graph.vertex.*;
 import ghidra.app.plugin.core.functiongraph.mvc.*;
 import ghidra.app.services.*;
@@ -75,7 +75,6 @@ import ghidra.program.util.ProgramSelection;
 import ghidra.test.*;
 import ghidra.util.Msg;
 import ghidra.util.task.RunManager;
-import util.CollectionUtils;
 
 public abstract class AbstractFunctionGraphTest extends AbstractGhidraHeadedIntegrationTest {
 
@@ -558,9 +557,6 @@ public abstract class AbstractFunctionGraphTest extends AbstractGhidraHeadedInte
 
 		graphProvider = waitForComponentProvider(FGProvider.class);
 		assertNotNull("Graph not shown", graphProvider);
-
-		FGActionManager actionManager = graphProvider.getActionManager();
-		actionManager.setLayoutFinder(() -> CollectionUtils.asSet(new TestFGLayoutProvider()));
 	}
 
 	protected ProgramSelection makeSingleVertexSelectionInCodeBrowser() {
@@ -624,7 +620,7 @@ public abstract class AbstractFunctionGraphTest extends AbstractGhidraHeadedInte
 		assertNotNull(action);
 
 		FieldHeaderLocation fhLoc = createFieldHeaderLocation(provider);
-		ActionContext context = new ActionContext(null, fhLoc);
+		ActionContext context = createContext(fhLoc);
 		performAction(action, context, true);
 
 		waitForConditionWithoutFailing(() -> fieldIsVisible(provider, actionName));
@@ -728,7 +724,7 @@ public abstract class AbstractFunctionGraphTest extends AbstractGhidraHeadedInte
 		assertNotNull(action);
 
 		FieldHeaderLocation fhLoc = createFieldHeaderLocation(provider);
-		ActionContext context = new ActionContext(null, fhLoc);
+		ActionContext context = createContext(fhLoc);
 		performAction(action, context, false);
 
 		Window dialog = waitForWindow("Reset All Formats?");
@@ -2327,6 +2323,14 @@ public abstract class AbstractFunctionGraphTest extends AbstractGhidraHeadedInte
 		FGData graphData = getFunctionGraphData();
 		assertNotNull(graphData);
 		assertTrue("Unexpectedly received an empty FunctionGraphData", graphData.hasResults());
+	}
+
+	protected void swing(Runnable r) {
+		AbstractGenericTest.runSwing(r);
+	}
+
+	protected <T> T swing(Supplier<T> s) {
+		return AbstractGenericTest.runSwing(s);
 	}
 
 	static class DummyTransferable implements Transferable {

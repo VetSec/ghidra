@@ -18,7 +18,6 @@ package ghidra.program.database.mem;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.*;
@@ -282,7 +281,8 @@ public class MemBlockDBTest extends AbstractGenericTest {
 	@Test
 	public void testCreateFileBytesBlockOutSideRange() throws Exception {
 		byte[] bytes = new byte[256];
-		FileBytes fileBytes = mem.createFileBytes("test", 0, 100, new ByteArrayInputStream(bytes));
+		FileBytes fileBytes =
+			mem.createFileBytes("test", 0, 100, new ByteArrayInputStream(bytes), TaskMonitor.DUMMY);
 		try {
 			mem.createInitializedBlock("test", addr(100), fileBytes, 10, 100, false);
 			fail(
@@ -360,6 +360,26 @@ public class MemBlockDBTest extends AbstractGenericTest {
 	}
 
 	@Test
+	public void testJoinNonConsecutiveBlocks() throws Exception {
+		FileBytes fileBytes = createFileBytes();
+		MemoryBlock block1 = createFileBytesBlock(fileBytes, addr(0), 25, 10);
+		MemoryBlock block2 = createFileBytesBlock(fileBytes, addr(20), 70, 10);
+		MemoryBlock block3 = createFileBytesBlock(fileBytes, addr(10), 0, 10);
+
+		MemoryBlock block = mem.join(block1, block3);
+		block = mem.join(block1, block2);
+		assertEquals(1, mem.getBlocks().length);
+		assertEquals(30, block.getSize());
+		assertEquals(addr(0), block.getStart());
+		List<MemoryBlockSourceInfo> sourceInfos = block.getSourceInfos();
+		assertEquals(3, sourceInfos.size());
+
+		for (int i = 0; i < block.getSize(); i++) {
+			mem.getByte(addr(i));
+		}
+	}
+
+	@Test
 	public void testJoinFileBytesBlockAndBufferBlock() throws Exception {
 		FileBytes fileBytes = createFileBytes();
 		MemoryBlock block1 = createFileBytesBlock(fileBytes, addr(10), 25, 10);
@@ -404,6 +424,16 @@ public class MemBlockDBTest extends AbstractGenericTest {
 		assertEquals(fileBytes2, sourceInfo.getFileBytes().get());
 		assertEquals(35, sourceInfo.getFileBytesOffset());
 		assertEquals(10, sourceInfo.getLength());
+	}
+
+	@Test
+	public void testSplitAfterExpand() throws Exception {
+		FileBytes fileBytes = createFileBytes();
+		MemoryBlock block1 = createFileBytesBlock(fileBytes, addr(0), 0, 50);
+		MemoryBlock block2 = mem.createBlock(block1, block1.getName() + ".exp", addr(50), 50);
+		MemoryBlock expandedBlock = mem.join(block1, block2);
+		mem.split(expandedBlock, addr(50));
+		assertEquals(0, mem.getByte(addr(50)));
 	}
 
 	@Test
@@ -602,6 +632,17 @@ public class MemBlockDBTest extends AbstractGenericTest {
 	}
 
 	@Test
+	public void testSetBytesInSubBlocks() throws Exception {
+		FileBytes fileBytes = createFileBytes();
+		MemoryBlock block1 = createFileBytesBlock(fileBytes, addr(0), 0, 10);
+		MemoryBlock block2 = createFileBytesBlock(fileBytes, addr(10), 20, 10);
+		mem.join(block1, block2);
+		assertEquals(20, mem.getByte(addr(10)));
+		mem.setByte(addr(10), (byte) 0);
+		assertEquals(0, mem.getByte(addr(10)));
+	}
+
+	@Test
 	public void testBitMappedJoin() throws Exception {
 		FileBytes fileBytes = createFileBytes();
 		createFileBytesBlock(fileBytes, addr(0), 0, 50);
@@ -663,7 +704,6 @@ public class MemBlockDBTest extends AbstractGenericTest {
 
 		assertEquals(2, ranges.getRangeCount());  // we have two sublocks so two distinct ranges
 		assertEquals(10, ranges.get(0).getSize() + ranges.get(1).getSize());
-
 
 		ByteSourceRange range = ranges.get(0);
 		assertEquals(10, range.getStart().getOffset());
@@ -826,7 +866,7 @@ public class MemBlockDBTest extends AbstractGenericTest {
 		assertEquals(0, range.getOffset());
 	}
 
-	@Test 
+	@Test
 	public void testAddressSourceInfoForFileBytesBlock() throws Exception {
 		FileBytes fileBytes = createFileBytes();
 		mem.createInitializedBlock("block", addr(100), fileBytes, 10, 50, false);
@@ -888,12 +928,13 @@ public class MemBlockDBTest extends AbstractGenericTest {
 			false);
 	}
 
-	private FileBytes createFileBytes() throws IOException {
+	private FileBytes createFileBytes() throws Exception {
 		byte[] bytes = new byte[256];
 		for (int i = 0; i < 256; i++) {
 			bytes[i] = (byte) i;
 		}
-		FileBytes fileBytes = mem.createFileBytes("test", 0, 100, new ByteArrayInputStream(bytes));
+		FileBytes fileBytes =
+			mem.createFileBytes("test", 0, 100, new ByteArrayInputStream(bytes), TaskMonitor.DUMMY);
 		return fileBytes;
 	}
 

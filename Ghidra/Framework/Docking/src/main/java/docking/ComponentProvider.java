@@ -387,7 +387,44 @@ public abstract class ComponentProvider implements HelpDescriptor, ActionContext
 	 */
 	@Override
 	public ActionContext getActionContext(MouseEvent event) {
-		return new ActionContext(this, getComponent());
+		Component c = getComponent();
+		KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+		Component focusedComponent = kfm.getFocusOwner();
+		if (focusedComponent != null && SwingUtilities.isDescendingFrom(focusedComponent, c)) {
+			c = focusedComponent;
+		}
+		return createContext(c, null);
+	}
+
+	/**
+	 * A default method for creating an action context for this provider
+	 * @return the new context
+	 */
+	protected ActionContext createContext() {
+		return new ActionContext(this);
+	}
+
+	/**
+	 * A default method for creating an action context for this provider, using the given
+	 * {@link ActionContext#getContextObject() context object}
+	 * 
+	 * @param contextObject the provider-specific context object
+	 * @return the new context
+	 */
+	protected ActionContext createContext(Object contextObject) {
+		return new ActionContext(this).setContextObject(contextObject);
+	}
+
+	/**
+	 * A default method for creating an action context for this provider, using the given
+	 * {@link ActionContext#getContextObject() context object} and component
+	 * 
+	 * @param sourceComponent the component that is the target of the context being created
+	 * @param contextObject the provider-specific context object
+	 * @return the new context
+	 */
+	protected ActionContext createContext(Component sourceComponent, Object contextObject) {
+		return new ActionContext(this, sourceComponent).setContextObject(contextObject);
 	}
 
 	/**
@@ -807,7 +844,7 @@ public abstract class ComponentProvider implements HelpDescriptor, ActionContext
 
 			DockingWindowManager myDwm = DockingWindowManager.getInstance(getComponent());
 			if (myDwm == null) {
-				// don't think this can happen
+				// this can happen when the tool loses focus
 				dockingTool.showComponentProvider(ComponentProvider.this, true);
 				return;
 			}

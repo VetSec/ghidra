@@ -92,7 +92,8 @@ public class MotorolaHexLoader extends AbstractProgramLoader {
 	}
 
 	@Override
-	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options) {
+	public String validateOptions(ByteProvider provider, LoadSpec loadSpec, List<Option> options,
+			Program program) {
 		Address baseAddr = null;
 
 		for (Option option : options) {
@@ -331,35 +332,20 @@ public class MotorolaHexLoader extends AbstractProgramLoader {
 						byte[] data = new byte[offset];
 						System.arraycopy(dataBuffer, 0, data, 0, offset);
 
-						String name = baseAddr.getAddressSpace().getName();
-
 						Address start = baseAddr.add(startAddress);
 
-						name = blockName;
-						int count = 0;
-						while (true) {
-							try {
-								MemoryBlockUtils.createInitializedBlock(program, isOverlay, name,
-									start, new ByteArrayInputStream(data), data.length, "",
-									provider.getName(), true, isOverlay, isOverlay, log, monitor);
-								break;
-							}
-							catch (RuntimeException e) {
-								Throwable cause = e.getCause();
-								if (!(cause instanceof DuplicateNameException)) {
-									throw e;
-								}
-								++count;
-								name = blockName + "_" + count;
-							}
-						}
+						String name =
+							blockName == null ? baseAddr.getAddressSpace().getName() : blockName;
+						MemoryBlockUtils.createInitializedBlock(program, isOverlay, name, start,
+							new ByteArrayInputStream(data), data.length, "", provider.getName(),
+							true, isOverlay, isOverlay, log, monitor);
 					}
 					offset = 0;
 					// set up new start address of new block we are starting
 					startAddress = addr;
 					endAddress = addr;
 				}
-				// update endaddress to start of next contiguous line address
+				// update end address to start of next contiguous line address
 				endAddress += numBytes - addrLen - 1;
 
 				// read in the data bytes on the line
